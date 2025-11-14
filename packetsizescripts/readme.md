@@ -1,6 +1,6 @@
 Download dnscrypt-proxy for your OS from their github repository.
 I used dnscrypt-proxy-win64-2.1.14\win64
-Then if you are on windows go to powershell and type 
+.If you are on windows go to powershell and type 
 ```
 cmd
 ```
@@ -16,7 +16,7 @@ Next come back to the command prompt terminal and type
 dnscrypt-proxy -resolve example.com  
 ```
 to resolve the domain example.com
-To run the experiments for the 10 domains type 
+.To run the experiments for the 10 domains type 
 ```
 python test_dns.py
 ```
