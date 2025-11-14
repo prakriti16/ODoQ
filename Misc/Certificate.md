@@ -34,8 +34,9 @@ NOTE: Make sure you have openssl and other dependencies installed via pip.
 
 Then to verify contents of your certificate use -noout command:
 ```
-openssl x509 -in server.pem -text -noout  
+openssl x509 -in server.pem -text -noout
 ```
 
-
+Image for reference:
+[!Certificate creation steps](/opensslnov14cert.png)
 
