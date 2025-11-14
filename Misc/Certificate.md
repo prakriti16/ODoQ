@@ -38,5 +38,6 @@ openssl x509 -in server.pem -text -noout
 ```
 
 Image for reference:
-[!Certificate creation steps](/opensslnov14cert.png)
+![Certificate creation steps](/opensslnov14cert.png)
+
 
