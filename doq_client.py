@@ -117,6 +117,22 @@ class DnsClientProtocol(QuicConnectionProtocol):
             raise ValueError(f"Nonce mismatch! Sent {nonce}, got {resp_nonce}")
         else:
             print(f"Nonce verified: {resp_nonce}")
+        # Verify domain name in response 
+        try:
+            answer = DNSRecord.parse(dns_bytes)
+            # The question section is what the server should echo back
+            if answer.q and answer.q[0].qname.idna() != query_name:
+                raise ValueError(
+                    f"Domain name mismatch! Requested '{query_name}', "
+                    f"but response contains '{answer.q[0].qname.idna()}'"
+                )
+            else:
+                print(f"Domain name verified: {query_name}")
+        except Exception as e:
+            # Re-raise or handle DNS parsing errors if they occur here
+            print(f"Warning: Could not parse or verify domain name: {e}")
+            pass # Continue if parsing fails, but warn the user.
+           
         t5=time.time()
         print("client received encrypted answer:", response)
         print("\n--- Client Timing Breakdown ---")
@@ -124,7 +140,7 @@ class DnsClientProtocol(QuicConnectionProtocol):
         print("{:<30} {:<10.6f}".format("Query packet creation", t2-t1))
         print("{:<30} {:<10.6f}".format("Query transmission setup", t3-t21))
         print("{:<30} {:<10.6f}".format("Wait for encrypted response", t4-t3))
-        print("{:<30} {:<10.6f}".format("Verifying nonce", t5-t4))
+        print("{:<30} {:<10.6f}".format("Verifying nonce and domain", t5-t4))
         print("-------------------------------")
         if self.csv_writer:
             self.csv_writer.writerow([query_name,f"{t2-t1:.6f}",f"{t3-t21:.6f}",f"{t4-t3:.6f}",f"{t5-t4:.6f}",f"{t5-t21+t2-t1:.6f}"])
