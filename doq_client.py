@@ -120,11 +120,13 @@ class DnsClientProtocol(QuicConnectionProtocol):
         # Verify domain name in response 
         try:
             answer = DNSRecord.parse(dns_bytes)
-            # The question section is what the server should echo back
-            if answer.q and answer.q[0].qname.idna() != query_name:
+            # Access the question's QNAME directly from the 'q' attribute.
+            # .q is a DNSQuestion object, not a list of questions.
+            # Use .qname.idna() to get the domain name string for comparison.
+            if answer.q and answer.q.qname.idna() != query_name:
                 raise ValueError(
                     f"Domain name mismatch! Requested '{query_name}', "
-                    f"but response contains '{answer.q[0].qname.idna()}'"
+                    f"but response contains '{answer.q.qname.idna()}'"
                 )
             else:
                 print(f"Domain name verified: {query_name}")
