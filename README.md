@@ -23,3 +23,4 @@ At client:
 ```
 python doq_client.py --ca-certs onlyproxy.pem --query-type A --query-name dns.adguard.com --port 8053 --host 10.240.60.74 --server-cert onlyserver.pem --insecure -c 10 --timing-log odoqnov11client.csv
 ```
+Slides: https://docs.google.com/presentation/d/1kljhKY0-RenVRWwg4YIMfD2tiiRcGStZ6vLdnqVaPa8/edit?usp=sharing
