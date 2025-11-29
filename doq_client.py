@@ -24,23 +24,22 @@ from cryptography.x509 import load_pem_x509_certificate
 
 logger = logging.getLogger("client")
 
-def generate_aes_key():
-    # Used for the ephemeral transaction key
+def generate_aes_key(): #used for the ephemeral transaction key
     return os.urandom(32)
 
-def aes_encrypt(key, plaintext):
-    iv = os.urandom(16)
-    cipher = Cipher(algorithms.AES(key), modes.CFB(iv))
-    encryptor = cipher.encryptor()
-    ciphertext = encryptor.update(plaintext) + encryptor.finalize()
-    return iv + ciphertext
+def aes_encrypt(key,plaintext):
+    iv=os.urandom(16)
+    cipher=Cipher(algorithms.AES(key),modes.CFB(iv))
+    encryptor=cipher.encryptor()
+    ciphertext=encryptor.update(plaintext)+encryptor.finalize()
+    return iv+ciphertext
 
-def aes_decrypt(key, data):
-    iv = data[:16]
-    ciphertext = data[16:]
-    cipher = Cipher(algorithms.AES(key), modes.CFB(iv))
-    decryptor = cipher.decryptor()
-    return decryptor.update(ciphertext) + decryptor.finalize()
+def aes_decrypt(key,data):
+    iv=data[:16]
+    ciphertext=data[16:]
+    cipher=Cipher(algorithms.AES(key),modes.CFB(iv))
+    decryptor=cipher.decryptor()
+    return decryptor.update(ciphertext)+decryptor.finalize()
 
 class DnsClientProtocol(QuicConnectionProtocol):
     def __init__(self, *args,server_pubkey=None, csv_writer=None,**kwargs) -> None:
@@ -51,33 +50,20 @@ class DnsClientProtocol(QuicConnectionProtocol):
 
     async def query(self, query_name: str, query_type: str) -> bytes:
         t1 = time.time()
-        # serialize DNS query
-        query = DNSRecord(
+        query=DNSRecord(
             header=DNSHeader(id=0),
             q=DNSQuestion(query_name, getattr(QTYPE, query_type)),
         )
-        query_bytes = bytes(query.pack())
+        query_bytes=bytes(query.pack())
+        client_symmetric_key=os.urandom(16) #generate client symmetric key
+        nonce=int(time.time()*1000)  #generate nonce in milliseconds
+        nonce_bytes=struct.pack("!Q",nonce)  #8-byte unsigned long long
+        plaintext_payload=client_symmetric_key+nonce_bytes+query_bytes #prepend key and nonce to query
+        aes_key=generate_aes_key() #generate ephemeral AES key
+        encrypted_payload=aes_encrypt(aes_key,plaintext_payload) #encrypt payload
 
-        # Generate client symmetric key
-        client_symmetric_key = os.urandom(16)
-        
-
-        # --- NEW: Generate nonce (timestamp) ---
-        nonce = int(time.time() * 1000)  # milliseconds
-        nonce_bytes = struct.pack("!Q", nonce)  # 8-byte unsigned long long
-        
-
-        # Prepend key + nonce to query
-        plaintext_payload = client_symmetric_key + nonce_bytes + query_bytes
-
-        # Generate ephemeral AES key
-        aes_key = generate_aes_key()
-
-        # Encrypt payload
-        encrypted_payload = aes_encrypt(aes_key, plaintext_payload)
-
-        # Encrypt AES key with server’s public key
-        encrypted_aes_key = self.server_pubkey.encrypt(
+        #encrypt AES key with server’s public key
+        encrypted_aes_key=self.server_pubkey.encrypt(
             aes_key,
             padding.OAEP(
                 mgf=padding.MGF1(algorithm=hashes.SHA256()),
@@ -85,44 +71,33 @@ class DnsClientProtocol(QuicConnectionProtocol):
                 label=None
             )
         )
-
-        # Send
         data = struct.pack("!H", len(encrypted_aes_key)) + encrypted_aes_key + encrypted_payload
-        
         t2 = time.time()
         print(f"Generated client symmetric key for response: {client_symmetric_key.hex()}")
         print(f"Generated nonce: {nonce}")
         print("Encrypted query sent from client:", data)
         t21 =time.time()
 
-        # send query and wait for answer
         stream_id = self._quic.get_next_available_stream_id()
-        self._quic.send_stream_data(stream_id, data, end_stream=True)
-
+        self._quic.send_stream_data(stream_id, data, end_stream=True) #send query
         waiter = self._loop.create_future()
         self._ack_waiter = waiter
         self.transmit()
         t3 = time.time()
-        response = await asyncio.shield(waiter)
+        response = await asyncio.shield(waiter) #wait for response
         print("Encrypted response size:",len(response),"bytes")
         decrypted_response = aes_decrypt(client_symmetric_key, response)
         print("Decrypted msg size:",len(decrypted_response),"bytes")
         t4 = time.time()
-
-        # Extract nonce from server’s response
-        resp_nonce = struct.unpack("!Q", decrypted_response[:8])[0]
-        dns_bytes = decrypted_response[8:]  # remaining is DNS payload
+        resp_nonce = struct.unpack("!Q", decrypted_response[:8])[0] #extract nonce from server's response.
+        dns_bytes = decrypted_response[8:]  #remaining is DNS payload
 
         if resp_nonce != nonce:
             raise ValueError(f"Nonce mismatch! Sent {nonce}, got {resp_nonce}")
         else:
-            print(f"Nonce verified: {resp_nonce}")
-        # Verify domain name in response 
+            print(f"Nonce verified: {resp_nonce}") #verify domain name in response 
         try:
-            answer = DNSRecord.parse(dns_bytes)
-            # Access the question's QNAME directly from the 'q' attribute.
-            # .q is a DNSQuestion object, not a list of questions.
-            # Use .qname.idna() to get the domain name string for comparison.
+            answer = DNSRecord.parse(dns_bytes) #TODO: fixing this code block to verify domain name.
             if answer.q and answer.q.qname.idna() != query_name:
                 raise ValueError(
                     f"Domain name mismatch! Requested '{query_name}', "
@@ -131,9 +106,8 @@ class DnsClientProtocol(QuicConnectionProtocol):
             else:
                 print(f"Domain name verified: {query_name}")
         except Exception as e:
-            # Re-raise or handle DNS parsing errors if they occur here
             print(f"Warning: Could not parse or verify domain name: {e}")
-            pass # Continue if parsing fails, but warn the user.
+            pass #continue if parsing fails, but warn the user.
            
         t5=time.time()
         print("client received encrypted answer:", response)
@@ -150,7 +124,6 @@ class DnsClientProtocol(QuicConnectionProtocol):
 
 
     def quic_event_received(self, event: QuicEvent) -> None:
-        # SIMPLIFIED LOGIC
         waiter = self._ack_waiter
         if waiter is not None and not waiter.done():
             if isinstance(event, StreamDataReceived):
@@ -173,9 +146,7 @@ async def main(
     count: int, 
     timing_log_file: str
 ) -> None:
-    # Load server public key from certificate
     try:
-        # BUG FIX: Use the server_cert argument instead of a hardcoded filename
         with open(server_cert,"rb") as f1:
             cert_data=f1.read()
         cert=load_pem_x509_certificate(cert_data)
@@ -190,15 +161,14 @@ async def main(
         file_exists = os.path.exists(timing_log_file)
         file_is_empty = not file_exists or os.path.getsize(timing_log_file) == 0
         try:
-            # Open the CSV file and write the header
             csv_file = open(timing_log_file, 'a', newline='')
             csv_writer = csv.writer(csv_file)
-            if file_is_empty:
+            if file_is_empty: #write title row only if file is empty.
                 csv_writer.writerow(['Domain queried','Query_Packet_Creation_s','Transmission_Setup_s','Wait_for_Encrypted_Response_s','Response_Decryption_s','Total_Time_s'])
             logger.info(f"Timing data will be logged to {timing_log_file}")
         except Exception as e:
             logger.error(f"Could not open CSV file {timing_log_file}: {e}")
-            csv_writer = None # Disable logging if error occurs
+            csv_writer = None #disable logging if error occurs
     
     logger.debug(f"Connecting to {host}:{port}")
     async with connect(
