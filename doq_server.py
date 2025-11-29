@@ -4,8 +4,8 @@ import logging
 import struct
 import time
 from typing import Dict, Optional
-import os # NEW
-import csv # NEW
+import os
+import csv
 
 from aioquic.asyncio import QuicConnectionProtocol, serve
 from aioquic.quic.configuration import QuicConfiguration
@@ -21,7 +21,7 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 def aes_encrypt(key, plaintext):
     iv = os.urandom(16)
-    cipher = Cipher(algorithms.AES(key), modes.CFB(iv)) #Use the extracted client_symmetric_key here
+    cipher = Cipher(algorithms.AES(key), modes.CFB(iv)) #use the extracted client_symmetric_key
     encryptor = cipher.encryptor()
     ciphertext = encryptor.update(plaintext) + encryptor.finalize()
     return iv + ciphertext
@@ -34,11 +34,10 @@ def aes_decrypt(key, encrypted_payload):
     return decryptor.update(ciphertext) + decryptor.finalize()
 
 class DnsServerProtocol(QuicConnectionProtocol):
-    def __init__(self, *args, priv_key=None, csv_writer=None, **kwargs): # MODIFIED
+    def __init__(self, *args, priv_key=None, csv_writer=None, **kwargs):
         super().__init__(*args, **kwargs)
-        # Load private key for decrypting AES key
-        self.priv_key = priv_key
-        self.csv_writer = csv_writer # NEW
+        self.priv_key = priv_key #load private key for decrypting AES key
+        self.csv_writer = csv_writer 
 
     def quic_event_received(self, event: QuicEvent):
         if isinstance(event, StreamDataReceived):
@@ -46,13 +45,9 @@ class DnsServerProtocol(QuicConnectionProtocol):
                 data = event.data
                 print("server received encrypted query:", data)
                 t1 = time.time()
-
-                # Unpack the length of the encrypted AES key
-                aes_key_len = struct.unpack("!H", data[:2])[0]
+                aes_key_len = struct.unpack("!H", data[:2])[0] #unpack the length of the encrypted AES key
                 encrypted_aes_key = data[2:2+aes_key_len]
                 encrypted_payload = data[2+aes_key_len:]
-
-                # Decrypt AES key with the private key
                 aes_key = self.priv_key.decrypt(
                     encrypted_aes_key,
                     padding.OAEP(
@@ -60,48 +55,28 @@ class DnsServerProtocol(QuicConnectionProtocol):
                         algorithm=hashes.SHA256(),
                         label=None
                     )
-                )
-
-                # Decrypt the payload using the decrypted ephemeral AES key
-                decrypted_payload = aes_decrypt(aes_key, encrypted_payload)
-
-                # Extract client symmetric key (first 16 bytes)
-                client_symmetric_key = decrypted_payload[:16]
-
-                # Extract nonce (next 8 bytes)
-                nonce_bytes = decrypted_payload[16:24]
+                )               
+                decrypted_payload = aes_decrypt(aes_key, encrypted_payload) #decrypt the payload using the decrypted ephemeral AES key
+                client_symmetric_key = decrypted_payload[:16] #client symmetric key is first 16 bytes
+                nonce_bytes = decrypted_payload[16:24] #next 8 bytes is nonce
                 nonce = struct.unpack("!Q", nonce_bytes)[0]
-                
-
-                # Extract actual DNS query (remaining bytes)
-                query_bytes = decrypted_payload[24:]
+                query_bytes = decrypted_payload[24:] #remaining bytes is actual DNS query
                 t2 = time.time()
                 print(f"Server extracted client symmetric key: {client_symmetric_key.hex()}")
-                print(f"Server extracted nonce: {nonce}")
-                # Parse query
+                print(f"Server extracted nonce: {nonce}")\
                 query = DNSRecord.parse(query_bytes)
-                t3 = time.time()
-                
-                query_name = str(query.q.qname) # Extract query name for logging
-
-                # Perform DNS lookup (forward to upstream resolver)
+                t3 = time.time()                
+                query_name = str(query.q.qname) #extract query name for logging
                 answer_bytes = query.send(args.resolver, 53)
                 t4 = time.time()
-
-                # Prepend nonce to answer
-                response_payload = nonce_bytes + answer_bytes
-
-                # Encrypt the response using the client's symmetric key
-                encrypted_answer = aes_encrypt(client_symmetric_key, response_payload)
+                response_payload = nonce_bytes + answer_bytes #prepend nonce
+                encrypted_answer = aes_encrypt(client_symmetric_key, response_payload) #encrypt the response using the client's symmetric key
                 t5 = time.time()
 
                 print("server sent encrypted answer:", encrypted_answer)
-
-                # Send the encrypted answer back
-                t6 = time.time()
+                t6 = time.time() #send the encrypted answer back
                 self._quic.send_stream_data(event.stream_id, encrypted_answer, end_stream=True)
                 t7 = time.time()
-                
                 t_decrypt = t2-t1
                 t_lookup = t4-t3
                 t_encrypt = t5-t4
@@ -114,10 +89,9 @@ class DnsServerProtocol(QuicConnectionProtocol):
                 print("{:<30} {:<10.6f}".format("DNS lookup (local)", t_lookup))
                 print("{:<30} {:<10.6f}".format("Answer encryption", t_encrypt))
                 print("{:<30} {:<10.6f}".format("Answer transmission setup", t_transmit))
-                print("{:<30} {:<10.6f}".format("TOTAL Server Handling Time (s)", t_total)) # Added total time
+                print("{:<30} {:<10.6f}".format("TOTAL Server Handling Time (s)", t_total)) #added total time
                 print("-------------------------------")
                 
-                # NEW: Write to CSV
                 if self.csv_writer:
                     self.csv_writer.writerow([
                         query_name,
@@ -127,8 +101,7 @@ class DnsServerProtocol(QuicConnectionProtocol):
                         f"{t_transmit:.6f}",
                         f"{t_total:.6f}"
                     ])
-                    self._quic.parent_connection.csv_file.flush() # Ensure data is written immediately
-
+                    self._quic.parent_connection.csv_file.flush() #ensure data is written immediately
             except Exception as e:
                 logging.error(f"Error handling encrypted query: {e}")
 
@@ -148,8 +121,8 @@ async def main(
     configuration: QuicConfiguration,
     session_ticket_store: SessionTicketStore,
     retry: bool,
-    priv_key, # Passed in main for protocol creation
-    csv_writer, # NEW
+    priv_key,
+    csv_writer, 
 ) -> None:
     await serve(
         host,
@@ -248,8 +221,6 @@ if __name__ == "__main__":
     if args.private_key:
         with open(args.private_key, "rb") as f:
             priv_key = serialization.load_pem_private_key(f.read(), password=None)
-
-    # NEW: CSV File setup
     csv_file = None
     csv_writer = None
     if args.timing_log:
@@ -271,8 +242,6 @@ if __name__ == "__main__":
         except Exception as e:
             logging.error(f"Could not open CSV file {args.timing_log}: {e}")
             csv_writer = None
-    # END NEW: CSV File setup
-
     try:
         asyncio.run(
             main(
@@ -281,12 +250,12 @@ if __name__ == "__main__":
                 configuration=configuration,
                 session_ticket_store=SessionTicketStore(),
                 retry=args.retry,
-                priv_key=priv_key, # Passed key
-                csv_writer=csv_writer, # Passed writer
+                priv_key=priv_key,
+                csv_writer=csv_writer,
             )
         )
     except KeyboardInterrupt:
         pass
-    finally: # NEW: Close CSV file
+    finally:
         if csv_file:
             csv_file.close()
