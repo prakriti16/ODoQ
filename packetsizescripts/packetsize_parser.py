@@ -15,8 +15,6 @@ def parse_wireshark_log(log_content):
     """
     summary_regex = re.compile(r"^\s*(\d+)\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+DNS\s+\d+\s+(.*)$")#capture the summary line (Packet No. and the full Info string), group 1 is Packet Number and group 2 is the full Info column content
     payload_regex = re.compile(r"^\s*UDP payload \((\d+)\s+bytes\)$") #capture the UDP payload length from the detail block in bytes
-    
-    #target A record information in the Info string
     a_record_info_regex = re.compile(
         r'\sA\s([a-zA-Z0-9\.\-]+)'        #literal sequence ' A ' (with surrounding spaces) followed by the Domain (Group 1)
         r'(?:\sA\s(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))?' #resolved IPv4 address (optional, captured only in successful responses) (Group 2)
@@ -75,3 +73,4 @@ except FileNotFoundError:
 extracted_data = parse_wireshark_log(log_data)
 output_filename = "odohcloudflare.csv"
 write_to_csv(extracted_data, output_filename)
+
