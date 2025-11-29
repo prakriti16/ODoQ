@@ -9,7 +9,7 @@ import base64
 from collections import deque
 from typing import BinaryIO, Callable, Deque, Optional, Union, cast
 from urllib.parse import urlparse
-import csv # 1. Added import for CSV
+import csv #added import for CSV
 
 import aioquic
 import wsproto
@@ -125,7 +125,7 @@ class WebSocket:
 
 
 class HttpClient(QuicConnectionProtocol):
-    def __init__(self, *args, csv_writer=None, **kwargs) -> None: # 2. Added csv_writer to init
+    def __init__(self, *args, csv_writer=None, **kwargs) -> None: #added csv_writer
         super().__init__(*args, **kwargs)
 
         self.key_update = False
@@ -134,7 +134,7 @@ class HttpClient(QuicConnectionProtocol):
         self._request_events: dict[int, Deque[H3Event]] = {}
         self._request_waiter: dict[int, asyncio.Future[Deque[H3Event]]] = {}
         self._websockets: dict[int, WebSocket] = {}
-        self.csv_writer = csv_writer # 2. Store csv_writer
+        self.csv_writer = csv_writer #store csv_writer
 
         if self._quic.configuration.alpn_protocols[0].startswith("hq-"):
             self._http = H0Connection(self._quic)
@@ -163,61 +163,42 @@ class HttpClient(QuicConnectionProtocol):
         """
         Perform a DNS query using DNS over HTTPS (DoH).
         """
-        t1 = time.time() # 4. Start timing
+        t1 = time.time() #start timing
 
-        # Create DNS query
+        #create DNS query
         query = DNSRecord(
             header=DNSHeader(id=0),
             q=DNSQuestion(query_name, getattr(QTYPE, query_type)),
         )
         dns_wire = bytes(query.pack())
-        
-        # Encode as base64url for GET request (RFC 8484)
-        dns_query_base64 = base64.urlsafe_b64encode(dns_wire).decode('utf-8').rstrip('=')
-        
-        # Construct DoH URL with dns parameter
+        dns_query_base64 = base64.urlsafe_b64encode(dns_wire).decode('utf-8').rstrip('=') #encode as base64url for GET request (RFC 8484)
         doh_url = f"{url}?dns={dns_query_base64}"
-        
-        t2 = time.time() # 4. Time after query preparation
-        
-        logger.info(f"Sending DNS query for {query_name} (type: {query_type})")
-        
-        # Send GET request with appropriate headers
+        t2 = time.time() #time after query preparation
+        logger.info(f"Sending DNS query for {query_name} (type: {query_type})") #send GET request with appropriate headers
         http_events = await self.get(
             doh_url,
             headers={
                 "accept": "application/dns-message"
             }
-        )
-        
-        t3 = time.time() # 4. Time after awaiting HTTP response
-
-        # Extract DNS response from HTTP response
-        dns_response = b""
+        )        
+        t3 = time.time() #time after awaiting HTTP response      
+        dns_response = b"" #extract DNS response from HTTP response
         for event in http_events:
             if isinstance(event, DataReceived):
                 dns_response += event.data
-        
-        # Parse DNS response
-        answer = DNSRecord.parse(dns_response)
-        
-        t4 = time.time() # 4. Time after parsing response
-
-        # 4. Timing breakdown and logging
+        answer = DNSRecord.parse(dns_response) #parse DNS response
+        t4 = time.time() #time after parsing response
         query_creation_time = t2 - t1
-        wait_for_response_time = t3 - t2 # Includes network latency and server processing
+        wait_for_response_time = t3 - t2 #includes network latency and server processing
         response_parsing_time = t4 - t3
         total_time = t4 - t1
-
         print("\n--- Client DoH Timing Breakdown ---")
         print("{:<30} {:<10}".format("Operation", "Time (s)"))
         print("{:<30} {:<10.6f}".format("Query Creation & Encoding", query_creation_time))
         print("{:<30} {:<10.6f}".format("Wait for HTTP Response", wait_for_response_time))
         print("{:<30} {:<10.6f}".format("Response Processing & Parsing", response_parsing_time))
-        print("-------------------------------")
         print("{:<30} {:<10.6f}".format("Total Query Time", total_time))
         print("-------------------------------")
-
         if self.csv_writer:
             self.csv_writer.writerow([
                 query_name,
@@ -225,8 +206,7 @@ class HttpClient(QuicConnectionProtocol):
                 f"{wait_for_response_time:.6f}",
                 f"{response_parsing_time:.6f}",
                 f"{total_time:.6f}"
-            ])
-            
+            ])            
         return answer
 
     async def websocket(
@@ -266,33 +246,24 @@ class HttpClient(QuicConnectionProtocol):
         if isinstance(event, (HeadersReceived, DataReceived)):
             stream_id = event.stream_id
             if stream_id in self._request_events:
-                # http
                 self._request_events[event.stream_id].append(event)
                 if event.stream_ended:
                     request_waiter = self._request_waiter.pop(stream_id)
                     request_waiter.set_result(self._request_events.pop(stream_id))
-
             elif stream_id in self._websockets:
-                # websocket
                 websocket = self._websockets[stream_id]
                 websocket.http_event_received(event)
-
             elif event.push_id in self.pushes:
-                # push
                 self.pushes[event.push_id].append(event)
-
-            # Request a key update for interoperability testing.
             if self.key_update:
                 logger.info("Requesting key update")
                 self.request_key_update()
                 self.key_update = False
-
         elif isinstance(event, PushPromiseReceived):
             self.pushes[event.push_id] = deque()
             self.pushes[event.push_id].append(event)
 
     def quic_event_received(self, event: QuicEvent) -> None:
-        #  pass event to the HTTP layer
         if self._http is not None:
             for http_event in self._http.handle_event(event):
                 self.http_event_received(http_event)
@@ -343,9 +314,8 @@ async def main(
     query_name: str,
     query_type: str,
     doh_path: str,
-    timing_log_file: Optional[str] = None # 3. Added timing_log_file argument
+    timing_log_file: Optional[str] = None 
 ) -> None:
-    # 3. CSV file setup
     csv_file = None
     csv_writer = None
     if timing_log_file:
@@ -367,30 +337,20 @@ async def main(
         server_host,
         server_port,
         configuration=configuration,
-        # 3. Pass csv_writer to HttpClient
         create_protocol=lambda *a, **kw: HttpClient(*a, csv_writer=csv_writer, **kw),
         session_ticket_handler=save_session_ticket,
         local_port=local_port,
     ) as client:
         client = cast(HttpClient, client)
-        
-        # Construct DoH URL
         doh_url = f"https://{server_host}:{server_port}{doh_path}"
-        
-        # Perform DNS query
         logger.info(f"Querying {query_name} (type: {query_type})")
         answer = await client.dns_query(doh_url, query_name, query_type)
         logger.info("Received DNS answer:\n%s" % answer)
-        
         client.close(error_code=ErrorCode.H3_NO_ERROR)
-        
-    if csv_file: # 3. Close CSV file
+    if csv_file:
         csv_file.close()
-
-
 if __name__ == "__main__":
     defaults = QuicConfiguration(is_client=True)
-
     parser = argparse.ArgumentParser(description="DNS over HTTPS (DoH) Client")
     parser.add_argument(
         "--server",
@@ -457,7 +417,7 @@ if __name__ == "__main__":
         type=str,
         help="log secrets to a file, for use with Wireshark",
     )
-    parser.add_argument( # 5. Added timing-log argument
+    parser.add_argument( 
         "--timing-log",
         type=str,
         default=None,
@@ -470,8 +430,6 @@ if __name__ == "__main__":
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
         level=logging.DEBUG if args.verbose else logging.INFO,
     )
-
-    # prepare configuration
     configuration = QuicConfiguration(
         is_client=True,
         alpn_protocols=H3_ALPN,
@@ -490,10 +448,8 @@ if __name__ == "__main__":
                 configuration.session_ticket = pickle.load(fp)
         except FileNotFoundError:
             pass
-
     if uvloop is not None:
-        uvloop.install()
-        
+        uvloop.install()        
     asyncio.run(
         main(
             configuration=configuration,
@@ -503,6 +459,6 @@ if __name__ == "__main__":
             query_name=args.query_name,
             query_type=args.query_type,
             doh_path=args.doh_path,
-            timing_log_file=args.timing_log # 3. Pass timing-log value
+            timing_log_file=args.timing_log
         )
     )
