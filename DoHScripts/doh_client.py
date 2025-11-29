@@ -9,7 +9,7 @@ import base64
 from collections import deque
 from typing import BinaryIO, Callable, Deque, Optional, Union, cast
 from urllib.parse import urlparse
-import csv #added import for CSV
+import csv
 
 import aioquic
 import wsproto
