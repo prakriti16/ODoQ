@@ -37,11 +37,8 @@ except ImportError:
 
 AsgiApplication = Callable
 HttpConnection = Union[H0Connection, H3Connection]
-
 SERVER_NAME = "aioquic/" + aioquic.__version__
-
 logger = logging.getLogger("server")
-
 
 def forward_dns_query(dns_query: bytes, resolver: str, port: int = 53) -> bytes:
     """
@@ -51,10 +48,7 @@ def forward_dns_query(dns_query: bytes, resolver: str, port: int = 53) -> bytes:
     sock.settimeout(5.0)
     
     try:
-        # Send query to upstream resolver
         sock.sendto(dns_query, (resolver, port))
-        
-        # Receive response
         response, _ = sock.recvfrom(4096)
         return response
     except socket.timeout:
@@ -65,8 +59,6 @@ def forward_dns_query(dns_query: bytes, resolver: str, port: int = 53) -> bytes:
         raise
     finally:
         sock.close()
-
-
 class HttpRequestHandler:
     def __init__(
         self,
@@ -138,23 +130,18 @@ class HttpRequestHandler:
                 (b":authority", self.authority),
                 (b":path", message["path"].encode()),
             ] + [(k, v) for k, v in message["headers"]]
-
-            # send push promise
             try:
                 push_stream_id = self.connection.send_push_promise(
                     stream_id=self.stream_id, headers=request_headers
                 )
             except NoAvailablePushIDError:
                 return
-
-            # fake request
             cast(HttpServerProtocol, self.protocol).http_event_received(
                 HeadersReceived(
                     headers=request_headers, stream_ended=True, stream_id=push_stream_id
                 )
             )
         self.transmit()
-
 
 class WebSocketHandler:
     def __init__(
@@ -182,10 +169,7 @@ class WebSocketHandler:
                 for ws_event in self.websocket.events():
                     self.websocket_event_received(ws_event)
             else:
-                # delay event processing until we get `websocket.accept`
-                # from the ASGI application
-                self.http_event_queue.append(event)
-
+                self.http_event_queue.append(event) #delay event processing until we get websocket.accept from the ASGI application.
     def websocket_event_received(self, event: wsproto.events.Event) -> None:
         if isinstance(event, wsproto.events.TextMessage):
             self.queue.put_nowait({"type": "websocket.receive", "text": event.data})
@@ -193,27 +177,21 @@ class WebSocketHandler:
             self.queue.put_nowait({"type": "websocket.receive", "bytes": event.data})
         elif isinstance(event, wsproto.events.CloseConnection):
             self.queue.put_nowait({"type": "websocket.disconnect", "code": event.code})
-
     async def run_asgi(self, app: AsgiApplication) -> None:
         self.queue.put_nowait({"type": "websocket.connect"})
-
         try:
             await app(self.scope, self.receive, self.send)
         finally:
             if not self.closed:
                 await self.send({"type": "websocket.close", "code": 1000})
-
     async def receive(self) -> Dict:
         return await self.queue.get()
-
     async def send(self, message: Dict) -> None:
         data = b""
         end_stream = False
         if message["type"] == "websocket.accept":
             subprotocol = message.get("subprotocol")
-
             self.websocket = wsproto.Connection(wsproto.ConnectionType.SERVER)
-
             headers = [
                 (b":status", b"200"),
                 (b"server", SERVER_NAME.encode()),
@@ -222,11 +200,8 @@ class WebSocketHandler:
             if subprotocol is not None:
                 headers.append((b"sec-websocket-protocol", subprotocol.encode()))
             self.connection.send_headers(stream_id=self.stream_id, headers=headers)
-
-            # consume backlog
             while self.http_event_queue:
                 self.http_event_received(self.http_event_queue.popleft())
-
         elif message["type"] == "websocket.close":
             if self.websocket is not None:
                 data = self.websocket.send(
@@ -246,7 +221,6 @@ class WebSocketHandler:
                 data = self.websocket.send(
                     wsproto.events.Message(data=message["bytes"])
                 )
-
         if data:
             self.connection.send_data(
                 stream_id=self.stream_id, data=data, end_stream=end_stream
@@ -254,8 +228,6 @@ class WebSocketHandler:
         if end_stream:
             self.closed = True
         self.transmit()
-
-
 class WebTransportHandler:
     def __init__(
         self,
@@ -293,8 +265,6 @@ class WebTransportHandler:
                         }
                     )
             else:
-                # delay event processing until we get `webtransport.accept`
-                # from the ASGI application
                 self.http_event_queue.append(event)
 
     async def run_asgi(self, app: AsgiApplication) -> None:
@@ -323,8 +293,6 @@ class WebTransportHandler:
                 (b"sec-webtransport-http3-draft", b"draft02"),
             ]
             self.connection.send_headers(stream_id=self.stream_id, headers=headers)
-
-            # consume backlog
             while self.http_event_queue:
                 self.http_event_received(self.http_event_queue.popleft())
         elif message["type"] == "webtransport.close":
@@ -349,18 +317,13 @@ class WebTransportHandler:
         if end_stream:
             self.closed = True
         self.transmit()
-
-
 Handler = Union[HttpRequestHandler, WebSocketHandler, WebTransportHandler]
-
-
 class HttpServerProtocol(QuicConnectionProtocol):
     def __init__(self, *args, resolver: str = "8.8.8.8", **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._handlers: Dict[int, Handler] = {}
         self._http: Optional[HttpConnection] = None
         self.resolver = resolver
-
     def http_event_received(self, event: H3Event) -> None:
         if isinstance(event, HeadersReceived) and event.stream_id not in self._handlers:
             authority = None
@@ -381,24 +344,17 @@ class HttpServerProtocol(QuicConnectionProtocol):
                     protocol = value.decode()
                 elif header and not header.startswith(b":"):
                     headers.append((header, value))
-
             if b"?" in raw_path:
                 path_bytes, query_string = raw_path.split(b"?", maxsplit=1)
             else:
                 path_bytes, query_string = raw_path, b""
             path = path_bytes.decode()
             self._quic._logger.info("HTTP request %s %s", method, path)
-
-            # FIXME: add a public API to retrieve peer address
-            client_addr = self._http._quic._network_paths[0].addr
+            client_addr = self._http._quic._network_paths[0].addr #add a public API to retrieve peer address
             client = (client_addr[0], client_addr[1])
-
             handler: Handler
             scope: Dict
-            
-            # Check if this is a DoH request
             if path.startswith("/dns-query"):
-                # Handle DNS over HTTPS
                 asyncio.ensure_future(
                     self.handle_doh_request(
                         event=event,
@@ -514,21 +470,17 @@ class HttpServerProtocol(QuicConnectionProtocol):
         dns_query = None
         
         try:
-            if method == "GET":
-                # Parse query parameter for GET method
+            if method == "GET": #parse query parameter for GET method
                 params = parse_qs(query_string.decode())
                 if "dns" in params:
-                    # Decode base64url encoded DNS query
-                    dns_base64 = params["dns"][0]
-                    # Add padding if needed
-                    padding = 4 - (len(dns_base64) % 4)
+                    dns_base64 = params["dns"][0] #decode base64url encoded DNS query
+                    padding = 4 - (len(dns_base64) % 4) #add padding if needed
                     if padding != 4:
                         dns_base64 += "=" * padding
                     dns_query = base64.urlsafe_b64decode(dns_base64)
                     logger.info(f"Received DoH GET request")
                 else:
-                    # Missing dns parameter
-                    self._http.send_headers(
+                    self._http.send_headers( #missing dns parameter
                         stream_id=stream_id,
                         headers=[(b":status", b"400")],
                     )
@@ -539,13 +491,10 @@ class HttpServerProtocol(QuicConnectionProtocol):
                     )
                     self.transmit()
                     return
-            elif method == "POST":
-                # For POST, we need to wait for the body
-                # Create a handler to receive the POST body
+            elif method == "POST": #wait for the body create a handler to receive the POST body
                 self._handlers[stream_id] = self
                 return
             else:
-                # Method not allowed
                 self._http.send_headers(
                     stream_id=stream_id,
                     headers=[(b":status", b"405")],
@@ -557,19 +506,13 @@ class HttpServerProtocol(QuicConnectionProtocol):
                 )
                 self.transmit()
                 return
-
-            # Forward query to upstream resolver
-            logger.info(f"Forwarding DNS query to {self.resolver}")
+            logger.info(f"Forwarding DNS query to {self.resolver}") #forward query to upstream resolver
             dns_response = forward_dns_query(dns_query, self.resolver)
-            
-            # Parse to log the response
             try:
-                answer = DNSRecord.parse(dns_response)
+                answer = DNSRecord.parse(dns_response) #parse to log the response
                 logger.info(f"Received DNS response with {len(answer.rr)} answers")
             except Exception as e:
                 logger.warning(f"Could not parse DNS response: {e}")
-
-            # Send HTTP response with DNS data
             self._http.send_headers(
                 stream_id=stream_id,
                 headers=[
@@ -587,8 +530,7 @@ class HttpServerProtocol(QuicConnectionProtocol):
             self.transmit()
 
         except Exception as e:
-            logger.error(f"Error handling DoH request: {e}")
-            # Send error response
+            logger.error(f"Error handling DoH request: {e}") #send error response
             self._http.send_headers(
                 stream_id=stream_id,
                 headers=[(b":status", b"500")],
@@ -609,28 +551,21 @@ class HttpServerProtocol(QuicConnectionProtocol):
         elif isinstance(event, DatagramFrameReceived):
             if event.data == b"quack":
                 self._quic.send_datagram_frame(b"quack-ack")
-
-        #  pass event to the HTTP layer
-        if self._http is not None:
+        if self._http is not None: 
             for http_event in self._http.handle_event(event):
                 self.http_event_received(http_event)
-
 
 class SessionTicketStore:
     """
     Simple in-memory store for session tickets.
     """
-
     def __init__(self) -> None:
         self.tickets: Dict[bytes, SessionTicket] = {}
-
     def add(self, ticket: SessionTicket) -> None:
         self.tickets[ticket.ticket] = ticket
-
     def pop(self, label: bytes) -> Optional[SessionTicket]:
         return self.tickets.pop(label, None)
-
-
+        
 async def main(
     host: str,
     port: int,
@@ -652,11 +587,9 @@ async def main(
         retry=retry,
     )
     await asyncio.Future()
-
-
+    
 if __name__ == "__main__":
     defaults = QuicConfiguration(is_client=False)
-
     parser = argparse.ArgumentParser(description="DNS over HTTPS (DoH) Server")
     parser.add_argument(
         "-c",
@@ -727,14 +660,10 @@ if __name__ == "__main__":
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
         level=logging.DEBUG if args.verbose else logging.INFO,
     )
-
-    # create QUIC logger
     if args.quic_log:
         quic_logger = QuicFileLogger(args.quic_log)
     else:
         quic_logger = None
-
-    # open SSL log file
     if args.secrets_log:
         secrets_log_file = open(args.secrets_log, "a")
     else:
@@ -749,16 +678,10 @@ if __name__ == "__main__":
         quic_logger=quic_logger,
         secrets_log_file=secrets_log_file,
     )
-
-    # load SSL certificate and key
     configuration.load_cert_chain(args.certificate, args.private_key)
-
-    # Note: We removed the ASGI application import since we're handling DoH directly
     application = None
-
     if uvloop is not None:
         uvloop.install()
-
     try:
         asyncio.run(
             main(
