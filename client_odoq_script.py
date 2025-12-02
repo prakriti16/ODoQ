@@ -123,35 +123,8 @@ def calculate_and_print_averages():
             # Populate domain_data with raw values
             for row in reader:
                 if not row: continue
-                # The first column is 'Upstream_Target' (e.g., '10.230.3.93:8053')
-                # The second column is the domain name which is not explicitly stored in the current CSV format.
-                # Assuming the second column in the CSV is the domain name or we use a simplified key.
-                # NOTE: Based on the existing doq_proxy.py, the first column is 'Upstream_Target'.
-                # For averaging per domain, the client script should ideally append the domain name.
-                # Since it doesn't, we will calculate the average across ALL runs for simplicity in this version,
-                # but print a warning that domain-specific averaging requires modifying doq_client.py.
-
-                # --- Simplified Assumption: Calculate overall averages across all runs ---
-                # This assumes the raw client output doesn't tag rows with the domain name.
-                # If the CSV does contain the domain name (e.g., in a second column), this part needs adjustment.
                 
-                # For the current goal of demonstrating averaging, we use the header as a base.
-                # We will print all averages across the entire test set.
-                
-                # Since the current setup logs 10 runs per domain sequentially, 
-                # we'll assume the rows match the sequence of domains_to_test * 10.
-                
-                # A robust solution requires the client to explicitly log the domain name.
-                # Let's adjust the logic to infer the domain based on the row index, 
-                # assuming exactly 10 runs per domain.
-                
-                # The CSV headers are typically:
-                # Upstream_Target, T_Received_s, Delta_T_Meta_s, T_Forwarded_s, Delta_T_Wait_s, T_Response_Sent_s, TOTAL_Time_s
-                
-                # We will use the Upstream_Target as the key for the averages for now, 
-                # though it should be the domain itself.
-                
-                key = row[0] # Upstream_Target (e.g., 10.230.3.93:8053)
+                key = row[0] #domain name
                 
                 # Collect timing data
                 for i in timing_indices:
