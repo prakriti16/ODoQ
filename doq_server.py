@@ -1,0 +1,261 @@
+import argparse
+import asyncio
+import logging
+import struct
+import time
+from typing import Dict, Optional
+import os
+import csv
+
+from aioquic.asyncio import QuicConnectionProtocol, serve
+from aioquic.quic.configuration import QuicConfiguration
+from aioquic.quic.events import QuicEvent, StreamDataReceived
+from aioquic.quic.logger import QuicFileLogger
+from aioquic.tls import SessionTicket
+from dnslib.dns import DNSRecord
+
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+
+def aes_encrypt(key, plaintext):
+    iv = os.urandom(12) #GCM recommends 12-byte IV/Nonce
+    cipher = Cipher(algorithms.AES(key), modes.GCM(iv))
+    encryptor = cipher.encryptor()
+    ciphertext = encryptor.update(plaintext) + encryptor.finalize()
+    auth_tag = encryptor.tag #16-byte authentication tag
+    return iv + ciphertext + auth_tag 
+
+def aes_decrypt(key, encrypted_payload):
+    iv = encrypted_payload[:12] #12 byte GCM IV
+    ciphertext = encrypted_payload[12:-16] #everything between IV and AuthTag is ciphertext 
+    auth_tag = encrypted_payload[-16:] #the last 16 bytes is AuthTag
+    cipher = Cipher(algorithms.AES(key), modes.GCM(iv,auth_tag))
+    decryptor = cipher.decryptor()
+    return decryptor.update(ciphertext) + decryptor.finalize() #decrypts and verifies the tag
+
+class DnsServerProtocol(QuicConnectionProtocol):
+    def __init__(self, *args, priv_key=None, csv_writer=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.priv_key = priv_key #load private key for decrypting AES key
+        self.csv_writer = csv_writer 
+
+    def quic_event_received(self, event: QuicEvent):
+        if isinstance(event, StreamDataReceived):
+            try:
+                data = event.data
+                print("server received encrypted query:", data)
+                t1 = time.time()
+                aes_key_len = struct.unpack("!H", data[:2])[0] #unpack the length of the encrypted AES key
+                encrypted_aes_key = data[2:2+aes_key_len]
+                encrypted_payload = data[2+aes_key_len:]
+                aes_key = self.priv_key.decrypt(
+                    encrypted_aes_key,
+                    padding.OAEP(
+                        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                        algorithm=hashes.SHA256(),
+                        label=None
+                    )
+                )               
+                decrypted_payload = aes_decrypt(aes_key, encrypted_payload) #decrypt the payload using the decrypted ephemeral AES key
+                client_symmetric_key = decrypted_payload[:16] #client symmetric key is first 16 bytes
+                nonce_bytes = decrypted_payload[16:24] #next 8 bytes is nonce
+                nonce = struct.unpack("!Q", nonce_bytes)[0]
+                query_bytes = decrypted_payload[24:] #remaining bytes is actual DNS query
+                t2 = time.time()
+                print(f"Server extracted client symmetric key: {client_symmetric_key.hex()}")
+                print(f"Server extracted nonce: {nonce}")
+                query = DNSRecord.parse(query_bytes)
+                t3 = time.time()                
+                query_name = str(query.q.qname).rstrip('.') #extract query name for logging, remove trailing dot
+                answer_bytes = query.send(args.resolver, 53)
+                t4 = time.time()
+                response_payload = nonce_bytes + answer_bytes #prepend nonce
+                encrypted_answer = aes_encrypt(client_symmetric_key, response_payload) #encrypt the response using the client's symmetric key
+                t5 = time.time()
+
+                print("server sent encrypted answer:", encrypted_answer)
+                t6 = time.time() #send the encrypted answer back
+                self._quic.send_stream_data(event.stream_id, encrypted_answer, end_stream=True)
+                t_decrypt = t2-t1
+                t_lookup = t4-t3
+                t_encrypt = t5-t4
+                t_transmit = t6
+                t_total = t_decrypt + t_lookup + t_encrypt + (t3-t2) + (t6-t5)
+
+                print("\n--- Server Timing Breakdown ---")
+                print("{:<30} {:<10}".format("Operation", "Time (s)"))
+                print("{:<30} {:<10.6f}".format("Query decryption & parsing", t_decrypt))
+                print("{:<30} {:<10.6f}".format("DNS lookup (local)", t_lookup))
+                print("{:<30} {:<10.6f}".format("Answer encryption", t_encrypt))
+                print("{:<30} {:<10.6f}".format("Answer transmitted at", t_transmit))
+                print("{:<30} {:<10.6f}".format("TOTAL Server Handling Time (s)", t_total)) #added total time
+                print("-------------------------------")
+                
+                if self.csv_writer:
+                    self.csv_writer.writerow([
+                        query_name,
+                        f"{t_decrypt:.6f}",
+                        f"{t_lookup:.6f}",
+                        f"{t_encrypt:.6f}",
+                        f"{t_transmit:.6f}",
+                        f"{t_total:.6f}"
+                    ])
+            except Exception as e:
+                logging.error(f"Error handling encrypted query: {e}")
+
+class SessionTicketStore:
+    def __init__(self) -> None:
+        self.tickets: Dict[bytes, SessionTicket] = {}
+
+    def add(self, ticket: SessionTicket) -> None:
+        self.tickets[ticket.ticket] = ticket
+
+    def pop(self, label: bytes) -> Optional[SessionTicket]:
+        return self.tickets.pop(label, None)
+
+async def main(
+    host: str,
+    port: int,
+    configuration: QuicConfiguration,
+    session_ticket_store: SessionTicketStore,
+    retry: bool,
+    priv_key,
+    csv_writer, 
+) -> None:
+    await serve(
+        host,
+        port,
+        configuration=configuration,
+        create_protocol=lambda *args, **kwargs: DnsServerProtocol(*args, priv_key=priv_key, csv_writer=csv_writer, **kwargs), # MODIFIED
+        session_ticket_fetcher=session_ticket_store.pop,
+        session_ticket_handler=session_ticket_store.add,
+        retry=retry,
+    )
+    await asyncio.Future()
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="DNS over QUIC server (encrypted)")
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="::",
+        help="listen on the specified address (defaults to ::)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=853,
+        help="listen on the specified port (defaults to 853)",
+    )
+    parser.add_argument(
+        "-k",
+        "--private-key",
+        type=str,
+        required=True,
+        help="load the TLS private key from the specified file",
+    )
+    parser.add_argument(
+        "-c",
+        "--certificate",
+        type=str,
+        required=True,
+        help="load the TLS certificate from the specified file",
+    )
+    parser.add_argument(
+        "--resolver",
+        type=str,
+        default="8.8.8.8",
+        help="Upstream Classic DNS resolver to use",
+    )
+    parser.add_argument(
+        "--retry",
+        action="store_true",
+        help="send a retry for new connections",
+    )
+    parser.add_argument(
+        "-q",
+        "--quic-log",
+        type=str,
+        help="log QUIC events to QLOG files in the specified directory",
+    )
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="increase logging verbosity"
+    )
+    parser.add_argument(
+        "-l",
+        "--secrets-log",
+        type=str,
+        help="log secrets to a file, for use with Wireshark",
+    )
+    parser.add_argument(
+        "--timing-log", # NEW
+        type=str,
+        default=None,
+        help="Path to a CSV file to log server timing analysis.", # NEW
+    )
+    args = parser.parse_args()
+
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+        level=logging.DEBUG if args.verbose else logging.INFO,
+    )
+
+    if args.quic_log:
+        quic_logger = QuicFileLogger(args.quic_log)
+    else:
+        quic_logger = None
+
+    configuration = QuicConfiguration(
+        alpn_protocols=["doq"],
+        is_client=False,
+        quic_logger=quic_logger,
+    )
+
+    configuration.load_cert_chain(args.certificate, args.private_key)
+    if args.secrets_log:
+        configuration.secrets_log_file = open(args.secrets_log, "a")
+
+    priv_key = None
+    if args.private_key:
+        with open(args.private_key, "rb") as f:
+            priv_key = serialization.load_pem_private_key(f.read(), password=None)
+    csv_file = None
+    csv_writer = None
+    if args.timing_log:
+        file_exists = os.path.exists(args.timing_log)
+        file_is_empty = not file_exists or os.path.getsize(args.timing_log) == 0
+        try:
+            csv_file = open(args.timing_log, 'a', newline='')
+            csv_writer = csv.writer(csv_file)
+            if file_is_empty:
+                csv_writer.writerow([
+                    'Domain_Queried',
+                    'Query_Decryption_Parsing_s',
+                    'DNS_Lookup_s',
+                    'Answer_Encryption_s',
+                    'Answer_Transmission_Setup_s',
+                    'TOTAL_Time_s'
+                ])
+            logging.info(f"Timing data will be logged to {args.timing_log}")
+        except Exception as e:
+            logging.error(f"Could not open CSV file {args.timing_log}: {e}")
+            csv_writer = None
+    try:
+        asyncio.run(
+            main(
+                host=args.host,
+                port=args.port,
+                configuration=configuration,
+                session_ticket_store=SessionTicketStore(),
+                retry=args.retry,
+                priv_key=priv_key,
+                csv_writer=csv_writer,
+            )
+        )
+    except KeyboardInterrupt:
+        pass
+    finally:
+        if csv_file:
+            csv_file.close()
