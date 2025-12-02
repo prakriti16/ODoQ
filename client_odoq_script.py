@@ -31,7 +31,7 @@ BASE_COMMAND_TEMPLATE = (
     "--host 10.240.60.74 "
     "--server-cert onlyserver.pem "
     "--insecure "
-    "-c 10 "
+    "-c 100 "
     "--timing-log odoqdec2client1.csv "
     "--upstream-host 10.230.3.93 "
     "--upstream-port 8053 "
