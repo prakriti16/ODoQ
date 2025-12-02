@@ -157,7 +157,7 @@ def calculate_and_print_averages():
     print("                 AVERAGE TIMING RESULTS ACROSS ALL RUNS                 ")
     print("="*80)
     
-    # Use the first key (Upstream_Target) to get the list of metrics
+    # Use the first key (domain name) to get the list of metrics
     first_key = next(iter(average_results))
     metric_names = [name for name in header[1:] if name in average_results[first_key]]
     
@@ -182,8 +182,7 @@ def calculate_and_print_averages():
         print(data_line)
 
     print("="*80)
-    print(f"\nNOTE: Averages are currently grouped by '{header[0]}' (Upstream Target: {first_key})")
-    print("A proper domain-per-domain average requires modifying 'doq_client.py' to log the domain name explicitly.")
+    print(f"\nNOTE: Averages are currently grouped by '{header[0]}' (Domain Name: {first_key})")
 
 
 if __name__ == "__main__":
