@@ -54,7 +54,7 @@ def run_resolution_command(domain: str):
 
 
 def parse_latest_log_times(domain: str):
-    """Reads the log file, finds the latest CNAME and A times for the domain."""
+    """Reads the log file, finds the latest A times for the domain."""
     if not os.path.exists(LOG_FILE_PATH):
         print(f"ERROR: Log file not found at {LOG_FILE_PATH}")
         return None
@@ -173,3 +173,4 @@ if __name__ == "__main__":
 
 
     
+
