@@ -20,7 +20,14 @@ python3 doq_proxy.py --certificate onlyproxy.pem --private-key onlyproxy.key --u
 ```
 
 At client:
+1. To run one time:
 ```
 python doq_client.py --ca-certs onlyproxy.pem --query-type A --query-name dns.adguard.com --port 8053 --host 10.240.60.74 --server-cert onlyserver.pem --insecure -c 10 --timing-log odoqnov11client.csv
 ```
+2. To run 100 runs for the 10 domains:
+```
+python client_odoq_script.py
+```
 Slides: https://docs.google.com/presentation/d/1kljhKY0-RenVRWwg4YIMfD2tiiRcGStZ6vLdnqVaPa8/edit?usp=sharing
+
+
