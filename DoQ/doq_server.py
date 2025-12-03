@@ -63,7 +63,7 @@ class DnsServerProtocol(QuicConnectionProtocol):
                 query_bytes = decrypted_payload[24:] #remaining bytes is actual DNS query
                 t2 = time.time()
                 print(f"Server extracted client symmetric key: {client_symmetric_key.hex()}")
-                print(f"Server extracted nonce: {nonce}")\
+                print(f"Server extracted nonce: {nonce}")
                 query = DNSRecord.parse(query_bytes)
                 t3 = time.time()                
                 query_name = str(query.q.qname) #extract query name for logging
