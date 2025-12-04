@@ -16,7 +16,14 @@ Next come back to the command prompt terminal and type
 dnscrypt-proxy -resolve example.com  
 ```
 to resolve the domain example.com
-.To run the experiments for the 10 domains type 
+.
+
+To flush the cache in between runs and avoud getting 0ms use command:
+```
+ipconfig /flushdns
+```
+
+To run the experiments for the 10 domains type 
 ```
 python test_dns.py
 ```
