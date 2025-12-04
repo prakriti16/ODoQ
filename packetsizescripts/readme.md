@@ -22,7 +22,7 @@ To flush the cache in between runs and avoud getting 0ms use command:
 ```
 ipconfig /flushdns
 ```
-
+Also stop and start dnscrypt-proxy again.
 To run the experiments for the 10 domains type 
 ```
 python test_dns.py
