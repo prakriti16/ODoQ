@@ -65,12 +65,13 @@ def write_to_csv(data, filename="wireshark_dns_a_payloads.csv"):
     except Exception as e:
         print(f"An error occurred while writing to CSV: {e}")
 try:
-    with open("odohcloudflare.txt", 'r', encoding='utf-8') as f:
+    with open("odohcloudflare.txt", 'r', encoding='utf-8') as f: #replace with your plaintext exported dissection of wireshark
         log_data = f.read()
 except FileNotFoundError:
     print("Error: 'your_wireshark_output.txt' not found.")
     exit()
 extracted_data = parse_wireshark_log(log_data)
-output_filename = "odohcloudflare.csv"
+output_filename = "odohcloudflare.csv" #name of the output file to be created
 write_to_csv(extracted_data, output_filename)
+
 
