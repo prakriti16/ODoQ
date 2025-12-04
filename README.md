@@ -22,7 +22,7 @@ python3 doq_proxy.py --certificate onlyproxy.pem --private-key onlyproxy.key --u
 At client:
 1. To run 1 time:
 ```
-python doq_client.py --ca-certs onlyproxy.pem --query-type A --query-name dns.adguard.com --port 8053 --host 10.240.60.74 --server-cert onlyserver.pem --insecure -c 1 --timing-log odoqnov11client.csv
+python doq_client.py --ca-certs onlyproxy.pem --query-type A --query-name dns.adguard.com --port 8053 --host 10.240.60.74 --server-cert onlyserver.pem --insecure -c 1 --timing-log odoqdec4client.csv --upstream-host 10.230.3.93 --upstream-port 8053
 ```
 Note: specify number of times to run with -c flag e.g. -c 10 for ten times.
 
