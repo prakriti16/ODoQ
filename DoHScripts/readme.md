@@ -22,3 +22,7 @@ Sample command to run the client:
 ```
 python3 doh_client.py --server 10.230.3.93 --server-port 4433 --query-name x.com  --query-type A --ca-certs server.pem -v --timing-log doh24oct.csv
 ```
+To run 100 times for 10 domains use:
+```
+python3 autodoh.py
+```
