@@ -20,14 +20,17 @@ python3 doq_proxy.py --certificate onlyproxy.pem --private-key onlyproxy.key --u
 ```
 
 At client:
-1. To run one time:
+1. To run 1 time:
 ```
-python doq_client.py --ca-certs onlyproxy.pem --query-type A --query-name dns.adguard.com --port 8053 --host 10.240.60.74 --server-cert onlyserver.pem --insecure -c 10 --timing-log odoqnov11client.csv
+python doq_client.py --ca-certs onlyproxy.pem --query-type A --query-name dns.adguard.com --port 8053 --host 10.240.60.74 --server-cert onlyserver.pem --insecure -c 1 --timing-log odoqnov11client.csv
 ```
+Note: specify number of times to run with -c flag e.g. -c 10 for ten times.
+
 2. To run 100 runs for the 10 domains:
 ```
 python client_odoq_script.py
 ```
+Note: sometimes the resolutiion might get stuck because of too frequent traffic, but the manual method 1 above directly from the command line should work fine for upto 20 consecutive runs at once.
 Slides: https://docs.google.com/presentation/d/1kljhKY0-RenVRWwg4YIMfD2tiiRcGStZ6vLdnqVaPa8/edit?usp=sharing
 
 
