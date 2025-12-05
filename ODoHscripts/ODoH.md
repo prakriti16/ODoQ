@@ -9,8 +9,11 @@ To start the server type:
 ```
 start dnscrypt-proxy
 ```
-To resolve a domain, like example.com, type
+To resolve a domain, like example.com, type:
 ```
 dnscrypt-proxy -resolve example.com
 ```
-
+To run the experiment for the .toml file 100 times for 10 domains use command:
+```
+run_loop.bat
+```
