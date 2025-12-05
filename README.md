@@ -16,7 +16,7 @@ python3 doq_server.py --certificate onlyserver.pem --private-key onlyserver.key 
 
 At proxy:
 ```
-python3 doq_proxy.py --certificate onlyproxy.pem --private-key onlyproxy.key --upstream-host 10.230.3.93 --upstream-port 8053 --ca-certs onlyserver.pem --insecure -v --timing-log odoqnov11proxy.csv
+python3 doq_proxy.py --certificate onlyproxy.pem --private-key onlyproxy.key --ca-certs onlyserver.pem --insecure -v --timing-log odoqnov11proxy.csv
 ```
 
 At client:
