@@ -30,7 +30,7 @@ Note: specify number of times to run with -c flag e.g. -c 10 for ten times.
 ```
 python client_odoq_script.py
 ```
-Note: sometimes the resolutiion might get stuck because of too frequent traffic, but the manual method 1 above directly from the command line should work fine for upto 20 consecutive runs at once.
+Note: sometimes the resolution might get stuck because of too frequent traffic, but the manual method 1 above directly from the command line should work fine for upto 20 consecutive runs at once.
 Slides: https://docs.google.com/presentation/d/1kljhKY0-RenVRWwg4YIMfD2tiiRcGStZ6vLdnqVaPa8/edit?usp=sharing
 
 
