@@ -1,0 +1,10 @@
+google.com
+youtube.com
+facebook.com
+wikipedia.org
+instagram.com
+bing.com
+reddit.com
+x.com
+dns.adguard.com
+quic.aiortc.org

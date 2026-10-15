@@ -1,0 +1,21 @@
+$ORIGIN reddit.com.
+$TTL 300
+@ IN SOA ns1.reddit.com. hostmaster.reddit.com. 1 3600 600 86400 300
+@ IN NS ns1.reddit.com.
+ns1 IN A 10.77.4.40
+@ IN A 192.0.2.123
+@ IN A 203.0.113.23
+@ IN A 203.0.113.208
+@ IN A 192.0.2.48
+@ IN AAAA 2001:db8:2803:3a7f::bb66
+@ IN AAAA 2001:db8:dc66:973b::0679
+@ IN AAAA 2001:db8:5f97:3940::09d3
+@ IN AAAA 2001:db8:4fb6:1822::a08b
+* IN A 192.0.2.123
+* IN A 203.0.113.23
+* IN A 203.0.113.208
+* IN A 192.0.2.48
+* IN AAAA 2001:db8:2803:3a7f::bb66
+* IN AAAA 2001:db8:dc66:973b::0679
+* IN AAAA 2001:db8:5f97:3940::09d3
+* IN AAAA 2001:db8:4fb6:1822::a08b

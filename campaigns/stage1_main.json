@@ -1,0 +1,38 @@
+{
+  "_comment": "Stage-1 main campaign. Blocked randomization: each repetition visits the netem profiles in random order and runs all cells of a profile in random order. 5 reps x 10 domains x 10 queries = 500 queries per cell. The legacy variant (the old bug) is only needed at lan and rtt50, unpadded. Run inside tmux; check `--dry-run` first.",
+  "name": "stage1_main",
+  "seed": 20261003,
+  "repetitions": 3,
+  "per_domain": 15,
+  "gap_ms": 5,
+  "qtype": "A",
+  "capture": true,
+  "restart_proxy_on_profile_change": true,
+  "factors": {
+    "variant": [
+      "doq",
+      "odoq-persistent",
+      "odoq-per-query"
+    ],
+    "conn_mode": [
+      "warm",
+      "cold",
+      "resume"
+    ],
+    "cache": [
+      "hit",
+      "miss"
+    ],
+    "netem": [
+      "lan",
+      "rtt50",
+      "rtt100",
+      "rtt50_loss5"
+    ],
+    "padding": [
+      "none",
+      "rfc8467"
+    ]
+  },
+  "exclude": []
+}

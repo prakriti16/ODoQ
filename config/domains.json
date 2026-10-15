@@ -1,0 +1,17 @@
+{
+  "_comment": "Synthetic local zones. Same 10 names as the paper so results stay comparable. Record counts are illustrative and must be stated in the paper as synthetic; replace with a Tranco sample in stage 2. 'zone' is the delegation served by NSD; 'qname' is what the client asks.",
+  "auth_addr": "10.77.4.40",
+  "ttl": 300,
+  "domains": [
+    {"qname": "google.com",       "zone": "google.com",    "a": 1, "aaaa": 1},
+    {"qname": "youtube.com",      "zone": "youtube.com",   "a": 1, "aaaa": 1},
+    {"qname": "facebook.com",     "zone": "facebook.com",  "a": 1, "aaaa": 1},
+    {"qname": "wikipedia.org",    "zone": "wikipedia.org", "a": 1, "aaaa": 1},
+    {"qname": "instagram.com",    "zone": "instagram.com", "a": 1, "aaaa": 1},
+    {"qname": "bing.com",         "zone": "bing.com",      "a": 2, "aaaa": 2},
+    {"qname": "reddit.com",       "zone": "reddit.com",    "a": 4, "aaaa": 4},
+    {"qname": "x.com",            "zone": "x.com",         "a": 2, "aaaa": 0},
+    {"qname": "dns.adguard.com",  "zone": "adguard.com",   "a": 2, "aaaa": 2},
+    {"qname": "quic.aiortc.org",  "zone": "aiortc.org",    "a": 1, "aaaa": 0}
+  ]
+}

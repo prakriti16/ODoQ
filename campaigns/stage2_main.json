@@ -1,0 +1,44 @@
+{
+  "_comment": "Stage-2 main campaign: the three-way comparison DoQ / ODoQ / ODoH, with ODoH over both HTTP/3 (QUIC) and HTTP/2 (TLS/TCP). Same blocked randomization, profiles and sample sizes as stage1_main. odoq-per-query and odoq-legacy are not repeated (stage1 data covers them). odoh-h2 has no resume cells: Python's ssl has no TLS early data, so resumption saves no round trips over TCP. Sizes match the stage1_main run actually executed on the measurement server (15 queries/domain, 5 ms gap, 3 reps, lan/rtt50/rtt100/rtt50_loss5), so the two campaigns are directly comparable.",
+  "name": "stage2_main",
+  "seed": 20261003,
+  "repetitions": 3,
+  "per_domain": 15,
+  "gap_ms": 5,
+  "qtype": "A",
+  "capture": true,
+  "restart_proxy_on_profile_change": true,
+  "factors": {
+    "variant": [
+      "doq",
+      "odoq-persistent",
+      "odoh-h3",
+      "odoh-h2"
+    ],
+    "conn_mode": [
+      "warm",
+      "cold",
+      "resume"
+    ],
+    "cache": [
+      "hit",
+      "miss"
+    ],
+    "netem": [
+      "lan",
+      "rtt50",
+      "rtt100",
+      "rtt50_loss5"
+    ],
+    "padding": [
+      "none",
+      "rfc8467"
+    ]
+  },
+  "exclude": [
+    {
+      "variant": "odoh-h2",
+      "conn_mode": "resume"
+    }
+  ]
+}

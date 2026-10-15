@@ -1,0 +1,13 @@
+$ORIGIN bing.com.
+$TTL 300
+@ IN SOA ns1.bing.com. hostmaster.bing.com. 1 3600 600 86400 300
+@ IN NS ns1.bing.com.
+ns1 IN A 10.77.4.40
+@ IN A 192.0.2.229
+@ IN A 192.0.2.151
+@ IN AAAA 2001:db8:cbcd:a373::f170
+@ IN AAAA 2001:db8:bf04:24fa::44e5
+* IN A 192.0.2.229
+* IN A 192.0.2.151
+* IN AAAA 2001:db8:cbcd:a373::f170
+* IN AAAA 2001:db8:bf04:24fa::44e5

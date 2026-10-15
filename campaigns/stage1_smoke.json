@@ -1,0 +1,43 @@
+{
+  "_comment": "Smoke test: ~10 minutes. Checks every code path; numbers are NOT for the paper.",
+  "name": "stage1_smoke",
+  "seed": 1,
+  "repetitions": 1,
+  "per_domain": 3,
+  "gap_ms": 50,
+  "qtype": "A",
+  "capture": true,
+  "restart_proxy_on_profile_change": true,
+  "factors": {
+    "variant": [
+      "doq",
+      "odoq-persistent",
+      "odoq-per-query",
+      "odoq-legacy",
+      "odoh-h3",
+      "odoh-h2"
+    ],
+    "conn_mode": [
+      "warm",
+      "cold",
+      "resume"
+    ],
+    "cache": [
+      "hit",
+      "miss"
+    ],
+    "netem": [
+      "lan",
+      "rtt50"
+    ],
+    "padding": [
+      "none"
+    ]
+  },
+  "exclude": [
+    {
+      "variant": "odoh-h2",
+      "conn_mode": "resume"
+    }
+  ]
+}

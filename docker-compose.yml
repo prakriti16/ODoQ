@@ -1,0 +1,158 @@
+# ODoQ testbed, stage 1.
+#
+#   client 10.77.1.10 --link_cp-- 10.77.1.20 proxy 10.77.2.20 --link_pr-- 10.77.2.30 resolver
+#   client 10.77.3.10 ------------------link_cr------------------ 10.77.3.30 resolver   (direct DoQ)
+#   resolver 10.77.4.30 --link_ra-- 10.77.4.40 auth (NSD)
+#
+# Every link is its own internal bridge (no Internet), with a fixed host-side
+# name (odq-cp, odq-pr, odq-cr, odq-ra) so tcpdump can capture on the host
+# without using the experiment cores.
+#
+# CPU pinning (Xeon Silver 4314, hyperthread pairs n / n+16): each role owns
+# one whole physical core. Cores 0-7 stay with the OS, minikube, routers.
+# Core 13 (CPUs 13,29) is used by host-side tcpdump.
+
+name: odoq
+
+x-node: &node
+  image: odoq-testbed:stage1
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+  cap_add: [NET_ADMIN]
+  init: true
+  restart: "no"
+  volumes:
+    - ./src:/opt/odoq/src:ro
+    - ./scripts:/opt/odoq/scripts:ro
+    - ./config:/etc/odoq:ro
+    - ./certs:/certs:ro
+    - ./results:/results
+
+services:
+  auth:
+    <<: *node
+    container_name: odoq-auth
+    cpuset: "11,27"
+    command: ["nsd", "-d", "-c", "/etc/odoq/nsd.conf"]
+    networks:
+      link_ra: {ipv4_address: 10.77.4.40}
+
+  resolver:
+    <<: *node
+    container_name: odoq-resolver
+    cpuset: "10,26"
+    depends_on: [auth]
+    command: ["/opt/odoq/scripts/resolver_entry.sh"]
+    networks:
+      link_pr: {ipv4_address: 10.77.2.30}
+      link_cr: {ipv4_address: 10.77.3.30}
+      link_ra: {ipv4_address: 10.77.4.30}
+
+  proxy:
+    <<: *node
+    container_name: odoq-proxy
+    cpuset: "9,25"
+    depends_on: [resolver]
+    command:
+      - python3
+      - -m
+      - odoq.proxy
+      - --listen
+      - "8853:persistent"
+      - --listen
+      - "8854:per-query"
+      - --listen
+      - "8855:legacy"
+      - --allow
+      - "10.77.2.30:8853=resolver.odoq.test"
+      - --certificate
+      - /certs/proxy.pem
+      - --private-key
+      - /certs/proxy.key
+      - --ca
+      - /certs/ca.pem
+      - --log
+      - /results/components/proxy.jsonl
+      - --secrets-log
+      - /results/keys/proxy.keys
+    networks:
+      link_cp: {ipv4_address: 10.77.1.20}
+      link_pr: {ipv4_address: 10.77.2.20}
+
+  client:
+    <<: *node
+    container_name: odoq-client
+    cpuset: "8,24"
+    command: ["sleep", "infinity"]
+    networks:
+      link_cp: {ipv4_address: 10.77.1.10}
+      link_cr: {ipv4_address: 10.77.3.10}
+      link_co: {ipv4_address: 10.77.5.10}
+
+  odoh-target:
+    <<: *node
+    container_name: odoq-odoh-target
+    cpuset: "12,28"
+    depends_on: [auth]
+    command: ["/opt/odoq/scripts/odoh_target_entry.sh"]
+    networks:
+      link_ot: {ipv4_address: 10.77.6.60}
+      link_ra: {ipv4_address: 10.77.4.60}
+
+  odoh-relay:
+    <<: *node
+    container_name: odoq-odoh-relay
+    cpuset: "14,30"
+    depends_on: [odoh-target]
+    command:
+      - python3
+      - -m
+      - odoq.odoh_server
+      - --role
+      - relay
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8443"
+      - --certificate
+      - /certs/proxy.pem
+      - --private-key
+      - /certs/proxy.key
+      - --ca
+      - /certs/ca.pem
+      - --allow
+      - "10.77.6.60:8553=resolver.odoq.test"
+      - --log
+      - /results/components/odoh-relay.jsonl
+      - --secrets-log
+      - /results/keys/odoh-relay.keys
+    networks:
+      link_co: {ipv4_address: 10.77.5.50}
+      link_ot: {ipv4_address: 10.77.6.50}
+
+networks:
+  link_cp:
+    internal: true
+    driver_opts: {com.docker.network.bridge.name: odq-cp}
+    ipam: {config: [{subnet: 10.77.1.0/24}]}
+  link_pr:
+    internal: true
+    driver_opts: {com.docker.network.bridge.name: odq-pr}
+    ipam: {config: [{subnet: 10.77.2.0/24}]}
+  link_cr:
+    internal: true
+    driver_opts: {com.docker.network.bridge.name: odq-cr}
+    ipam: {config: [{subnet: 10.77.3.0/24}]}
+  link_ra:
+    internal: true
+    driver_opts: {com.docker.network.bridge.name: odq-ra}
+    ipam: {config: [{subnet: 10.77.4.0/24}]}
+  link_co:
+    internal: true
+    driver_opts: {com.docker.network.bridge.name: odq-co}
+    ipam: {config: [{subnet: 10.77.5.0/24}]}
+  link_ot:
+    internal: true
+    driver_opts: {com.docker.network.bridge.name: odq-ot}
+    ipam: {config: [{subnet: 10.77.6.0/24}]}

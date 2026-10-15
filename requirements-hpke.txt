@@ -1,0 +1,3 @@
+# Installed separately with --no-deps so its stale cryptography pin does not
+# downgrade the version aioquic needs. hpke 0.3.2 works on cryptography 47.
+hpke==0.3.2

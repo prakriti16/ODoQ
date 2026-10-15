@@ -1,0 +1,9 @@
+$ORIGIN youtube.com.
+$TTL 300
+@ IN SOA ns1.youtube.com. hostmaster.youtube.com. 1 3600 600 86400 300
+@ IN NS ns1.youtube.com.
+ns1 IN A 10.77.4.40
+@ IN A 198.51.100.94
+@ IN AAAA 2001:db8:4c25:d4dc::e3de
+* IN A 198.51.100.94
+* IN AAAA 2001:db8:4c25:d4dc::e3de

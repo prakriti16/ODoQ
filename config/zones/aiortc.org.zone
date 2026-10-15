@@ -1,0 +1,7 @@
+$ORIGIN aiortc.org.
+$TTL 300
+@ IN SOA ns1.aiortc.org. hostmaster.aiortc.org. 1 3600 600 86400 300
+@ IN NS ns1.aiortc.org.
+ns1 IN A 10.77.4.40
+quic IN A 198.51.100.138
+*.quic IN A 198.51.100.138

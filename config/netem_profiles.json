@@ -1,0 +1,129 @@
+{
+  "_comment": "Per-link RTT (split half per direction), jitter (per direction) and loss % (per direction). Links: cp client-proxy, pr proxy-resolver, cr client-resolver (direct DoQ), ra resolver-authoritative. Topology choice: cr = cp means the proxy sits as far from the client as the resolver does (proxy off-path, worst case for ODoQ). State this in the paper; add 'near-proxy' profiles if you want the other case. ODoH links: co=client-relay (mirrors cp), ot=relay-target (mirrors pr); ODoH target reaches auth over ra. ta = odoh-target to auth (mirrors ra).",
+  "lan": {},
+  "rtt10": {
+    "cp": {
+      "rtt_ms": 10
+    },
+    "pr": {
+      "rtt_ms": 10
+    },
+    "cr": {
+      "rtt_ms": 10
+    },
+    "ra": {
+      "rtt_ms": 10
+    },
+    "co": {
+      "rtt_ms": 10
+    },
+    "ot": {
+      "rtt_ms": 10
+    },
+    "ta": {
+      "rtt_ms": 10
+    }
+  },
+  "rtt50": {
+    "cp": {
+      "rtt_ms": 50
+    },
+    "pr": {
+      "rtt_ms": 50
+    },
+    "cr": {
+      "rtt_ms": 50
+    },
+    "ra": {
+      "rtt_ms": 10
+    },
+    "co": {
+      "rtt_ms": 50
+    },
+    "ot": {
+      "rtt_ms": 50
+    },
+    "ta": {
+      "rtt_ms": 10
+    }
+  },
+  "rtt100": {
+    "cp": {
+      "rtt_ms": 100
+    },
+    "pr": {
+      "rtt_ms": 100
+    },
+    "cr": {
+      "rtt_ms": 100
+    },
+    "ra": {
+      "rtt_ms": 10
+    },
+    "co": {
+      "rtt_ms": 100
+    },
+    "ot": {
+      "rtt_ms": 100
+    },
+    "ta": {
+      "rtt_ms": 10
+    }
+  },
+  "rtt50_loss1": {
+    "cp": {
+      "rtt_ms": 50,
+      "loss_pct": 1
+    },
+    "pr": {
+      "rtt_ms": 50,
+      "loss_pct": 1
+    },
+    "cr": {
+      "rtt_ms": 50,
+      "loss_pct": 1
+    },
+    "ra": {
+      "rtt_ms": 10
+    },
+    "co": {
+      "rtt_ms": 50,
+      "loss_pct": 1
+    },
+    "ot": {
+      "rtt_ms": 50,
+      "loss_pct": 1
+    },
+    "ta": {
+      "rtt_ms": 10
+    }
+  },
+  "rtt50_loss5": {
+    "cp": {
+      "rtt_ms": 50,
+      "loss_pct": 5
+    },
+    "pr": {
+      "rtt_ms": 50,
+      "loss_pct": 5
+    },
+    "cr": {
+      "rtt_ms": 50,
+      "loss_pct": 5
+    },
+    "ra": {
+      "rtt_ms": 10
+    },
+    "co": {
+      "rtt_ms": 50,
+      "loss_pct": 5
+    },
+    "ot": {
+      "rtt_ms": 50,
+      "loss_pct": 5
+    },
+    "ta": {
+      "rtt_ms": 10
+    }
+  }
+}

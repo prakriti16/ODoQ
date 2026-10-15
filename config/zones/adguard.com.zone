@@ -1,0 +1,13 @@
+$ORIGIN adguard.com.
+$TTL 300
+@ IN SOA ns1.adguard.com. hostmaster.adguard.com. 1 3600 600 86400 300
+@ IN NS ns1.adguard.com.
+ns1 IN A 10.77.4.40
+dns IN A 192.0.2.180
+dns IN A 198.51.100.165
+dns IN AAAA 2001:db8:ea2e:dd76::545f
+dns IN AAAA 2001:db8:743e:0c79::3bac
+*.dns IN A 192.0.2.180
+*.dns IN A 198.51.100.165
+*.dns IN AAAA 2001:db8:ea2e:dd76::545f
+*.dns IN AAAA 2001:db8:743e:0c79::3bac

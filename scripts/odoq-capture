@@ -1,0 +1,14 @@
+#!/bin/bash
+# Root helper for packet capture, installed by scripts/install_capture_helper.sh
+# to /usr/local/sbin/odoq-capture (root:root 0755) with a sudoers rule that
+# allows only this command. It can only capture on the four testbed bridges,
+# and tcpdump drops to the calling user (-Z) before writing the file.
+set -euo pipefail
+if [ "${1:-}" = "--check" ]; then echo ok; exit 0; fi
+br="${1:?bridge}" out="${2:?output.pcap}"
+case "$br" in odq-cp|odq-pr|odq-cr|odq-ra|odq-co|odq-ot) ;; *) echo "bridge not allowed: $br" >&2; exit 2 ;; esac
+case "$out" in *.pcap) ;; *) echo "output must end in .pcap" >&2; exit 2 ;; esac
+user="${SUDO_USER:?must be run through sudo}"
+dir=$(dirname "$out")
+[ "$(stat -c %U "$dir")" = "$user" ] || { echo "$dir must be owned by $user" >&2; exit 2; }
+exec taskset -c 13,29 tcpdump -i "$br" -s 0 -B 8192 -U -Z "$user" -w "$out"

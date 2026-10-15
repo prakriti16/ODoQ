@@ -1,0 +1,9 @@
+$ORIGIN google.com.
+$TTL 300
+@ IN SOA ns1.google.com. hostmaster.google.com. 1 3600 600 86400 300
+@ IN NS ns1.google.com.
+ns1 IN A 10.77.4.40
+@ IN A 192.0.2.25
+@ IN AAAA 2001:db8:aa43:4c29::030a
+* IN A 192.0.2.25
+* IN AAAA 2001:db8:aa43:4c29::030a

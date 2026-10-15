@@ -1,0 +1,18 @@
+# Exact versions for stage 1 + 2 (Python 3.12).
+# NOTE on hpke: hpke 0.3.2 declares cryptography<44, but it runs correctly on
+# cryptography 50 (it uses only stable primitives). aioquic's service-identity
+# needs cryptography>=47. They are compatible in practice, so hpke is installed
+# with --no-deps (see Dockerfile) and cryptography is pinned here to 50.0.2.
+aioquic==1.3.0
+attrs==26.1.0
+certifi==2026.2.25
+cffi==2.0.0
+cryptography==50.0.2
+dnslib==0.9.26
+h2==4.4.1
+hpack==4.2.0
+hyperframe==6.1.0
+pycparser==3.0
+pylsqpack==0.3.24
+pyOpenSSL==26.4.0
+service-identity==26.1.0
